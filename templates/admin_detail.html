@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تفاصيل الطلب #{{ req.id }} | لوحة الإدارة</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="header-right">
+                <div class="university-name">
+                    <h3>المملكة العربية السعودية</h3>
+                    <h3>وزارة التعليم</h3>
+                    <h2>جامعة تبوك</h2>
+                    <h3>كلية الحاسبات وتقنية المعلومات</h3>
+                </div>
+            </div>
+            <div class="header-center">
+                <div class="logo-placeholder">
+                    <div class="logo-circle">
+                        <span>جامعة تبوك</span>
+                        <small>University of Tabuk</small>
+                    </div>
+                </div>
+            </div>
+            <div class="header-left">
+                <div class="university-name-en">
+                    <h3>Kingdom of Saudi Arabia</h3>
+                    <h3>Ministry of Education</h3>
+                    <h2>University of Tabuk</h2>
+                    <h3>Faculty of Computers and Information Technology</h3>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content admin-content">
+        <div class="admin-dashboard">
+            <!-- Top Bar -->
+            <div class="admin-header-bar">
+                <h1 class="admin-title">تفاصيل طلب الاعتذار #{{ req.id }}</h1>
+                <div class="admin-actions">
+                    <a href="{{ url_for('admin') }}" class="admin-btn admin-btn-secondary">العودة للقائمة</a>
+                    <a href="{{ url_for('admin_logout') }}" class="admin-btn admin-btn-danger">تسجيل الخروج</a>
+                </div>
+            </div>
+
+            <!-- Status Banner -->
+            <div class="detail-status-banner {% if req.eligible %}detail-eligible{% else %}detail-not-eligible{% endif %}">
+                <div class="detail-status-right">
+                    {% if req.eligible %}
+                    <span class="detail-status-icon">&#10003;</span>
+                    <span class="detail-status-text">مؤهل للاعتذار عن المقرر</span>
+                    {% else %}
+                    <span class="detail-status-icon">&#10007;</span>
+                    <span class="detail-status-text">غير مؤهل للاعتذار عن المقرر</span>
+                    {% endif %}
+                </div>
+                <div class="detail-status-left">
+                    {% if req.status == 'pending' %}
+                    <span class="badge badge-pending" style="font-size:0.9rem; padding:6px 18px;">قيد الانتظار</span>
+                    {% elif req.status == 'approved' %}
+                    <span class="badge badge-approved" style="font-size:0.9rem; padding:6px 18px;">مقبول</span>
+                    {% elif req.status == 'rejected' %}
+                    <span class="badge badge-rejected" style="font-size:0.9rem; padding:6px 18px;">مرفوض</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Two Column Layout -->
+            <div class="detail-grid">
+                <!-- Student Info -->
+                <div class="detail-card">
+                    <h3 class="detail-card-title">بيانات الطالب</h3>
+                    <div class="detail-info-list">
+                        <div class="detail-info-row">
+                            <span class="detail-label">اسم الطالب:</span>
+                            <span class="detail-value">{{ req.student.student_name or '-' }}</span>
+                        </div>
+                        <div class="detail-info-row">
+                            <span class="detail-label">الرقم الجامعي:</span>
+                            <span class="detail-value">{{ req.student.student_id }}</span>
+                        </div>
+                        <div class="detail-info-row">
+                            <span class="detail-label">الكلية:</span>
+                            <span class="detail-value">كلية الحاسبات وتقنية المعلومات</span>
+                        </div>
+                        <div class="detail-info-row">
+                            <span class="detail-label">التخصص:</span>
+                            <span class="detail-value">{{ req.student.major or '-' }}</span>
+                        </div>
+                        <div class="detail-info-row">
+                            <span class="detail-label">الدرجة العلمية:</span>
+                            <span class="detail-value">{{ req.student.degree or '-' }}</span>
+                        </div>
+                        <div class="detail-info-row">
+                            <span class="detail-label">تاريخ الطلب:</span>
+                            <span class="detail-value" style="direction:ltr; text-align:right;">{{ req.created_at.strftime('%Y-%m-%d %H:%M') if req.created_at else '-' }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Course Info -->
+                <div class="detail-card">
+                    <h3 class="detail-card-title">بيانات المقرر وسبب الاعتذار</h3>
+                    <div class="detail-info-list">
+                        <div class="detail-info-row">
+                            <span class="detail-label">رمز المقرر:</span>
+                            <span class="detail-value"><strong>{{ req.course_code }}</strong></span>
+                        </div>
+                        <div class="detail-info-row">
+                            <span class="detail-label">اسم المقرر:</span>
+                            <span class="detail-value">{{ req.course_name or '-' }}</span>
+                        </div>
+                        <div class="detail-info-row">
+                            <span class="detail-label">الفصل الدراسي:</span>
+                            <span class="detail-value">{{ req.semester or '-' }}</span>
+                        </div>
+                        <div class="detail-info-row">
+                            <span class="detail-label">العام الدراسي:</span>
+                            <span class="detail-value">{{ req.year or '-' }}</span>
+                        </div>
+                        <div class="detail-info-row">
+                            <span class="detail-label">سبب الاعتذار:</span>
+                            <span class="detail-value">{{ req.reason_type or '-' }}</span>
+                        </div>
+                        {% if req.reason %}
+                        <div class="detail-info-row">
+                            <span class="detail-label">تفاصيل إضافية:</span>
+                            <span class="detail-value">{{ req.reason }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Files Section -->
+            <div class="detail-card">
+                <h3 class="detail-card-title">المرفقات</h3>
+                <div class="detail-files-grid">
+                    <div class="detail-file-item">
+                        <div class="detail-file-icon">&#128196;</div>
+                        <div class="detail-file-info">
+                            <div class="detail-file-name">السجل الأكاديمي (Transcript)</div>
+                            {% if req.transcript_file %}
+                            <a href="{{ url_for('view_transcript', request_id=req.id) }}" target="_blank" class="detail-file-link">عرض الملف</a>
+                            {% else %}
+                            <span class="detail-file-missing">لم يتم رفع الملف</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="detail-file-item">
+                        <div class="detail-file-icon">&#128203;</div>
+                        <div class="detail-file-info">
+                            <div class="detail-file-name">المستند الداعم</div>
+                            {% if req.supporting_doc %}
+                            <a href="{{ url_for('view_supporting_doc', request_id=req.id) }}" target="_blank" class="detail-file-link">عرض الملف</a>
+                            {% else %}
+                            <span class="detail-file-missing">لم يتم رفع الملف</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rules Check Results -->
+            <div class="detail-card">
+                <h3 class="detail-card-title">نتائج فحص ضوابط الاعتذار</h3>
+                {% if rules %}
+                <div class="rules-results">
+                    {% for rule in rules %}
+                    <div class="rule-item {{ rule.status }}">
+                        <div class="rule-icon">
+                            {% if rule.status == 'pass' %}&#10003;{% elif rule.status == 'fail' %}&#10007;{% else %}&#9888;{% endif %}
+                        </div>
+                        <div class="rule-content">
+                            <div class="rule-name">{{ rule.rule }}</div>
+                            <div class="rule-detail">{{ rule.detail }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p style="color:#999; text-align:center; padding:20px;">لا تتوفر بيانات فحص الضوابط</p>
+                {% endif %}
+            </div>
+
+            <!-- Errors -->
+            {% if errors %}
+            <div class="detail-card" style="border: 2px solid #ef9a9a;">
+                <h3 class="detail-card-title" style="color:#c62828;">أسباب عدم الأهلية</h3>
+                <ul class="detail-error-list">
+                    {% for error in errors %}
+                    <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <!-- Warnings -->
+            {% if warnings %}
+            <div class="detail-card" style="border: 2px solid #ffe082;">
+                <h3 class="detail-card-title" style="color:#e65100;">تنبيهات</h3>
+                <ul class="detail-warning-list">
+                    {% for warning in warnings %}
+                    <li>{{ warning }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <!-- Action Buttons -->
+            <div class="detail-actions">
+                {% if req.status == 'pending' %}
+                <form method="POST" action="{{ url_for('admin_update_request', request_id=req.id) }}" style="display:inline;">
+                    <input type="hidden" name="status" value="approved">
+                    <input type="hidden" name="from_detail" value="1">
+                    <button type="submit" class="admin-btn admin-btn-approve-lg">قبول الطلب</button>
+                </form>
+                <form method="POST" action="{{ url_for('admin_update_request', request_id=req.id) }}" style="display:inline;">
+                    <input type="hidden" name="status" value="rejected">
+                    <input type="hidden" name="from_detail" value="1">
+                    <button type="submit" class="admin-btn admin-btn-reject-lg">رفض الطلب</button>
+                </form>
+                {% elif req.status == 'approved' %}
+                <form method="POST" action="{{ url_for('admin_update_request', request_id=req.id) }}" style="display:inline;">
+                    <input type="hidden" name="status" value="pending">
+                    <input type="hidden" name="from_detail" value="1">
+                    <button type="submit" class="admin-btn admin-btn-secondary">إعادة إلى قيد الانتظار</button>
+                </form>
+                {% elif req.status == 'rejected' %}
+                <form method="POST" action="{{ url_for('admin_update_request', request_id=req.id) }}" style="display:inline;">
+                    <input type="hidden" name="status" value="pending">
+                    <input type="hidden" name="from_detail" value="1">
+                    <button type="submit" class="admin-btn admin-btn-secondary">إعادة إلى قيد الانتظار</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>جامعة تبوك - كلية الحاسبات وتقنية المعلومات &copy; 2025</p>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة الإدارة - نظام الاعتذار عن المقررات | جامعة تبوك</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="header-right">
+                <div class="university-name">
+                    <h3>المملكة العربية السعودية</h3>
+                    <h3>وزارة التعليم</h3>
+                    <h2>جامعة تبوك</h2>
+                    <h3>كلية الحاسبات وتقنية المعلومات</h3>
+                </div>
+            </div>
+            <div class="header-center">
+                <div class="logo-placeholder">
+                    <div class="logo-circle">
+                        <span>جامعة تبوك</span>
+                        <small>University of Tabuk</small>
+                    </div>
+                </div>
+            </div>
+            <div class="header-left">
+                <div class="university-name-en">
+                    <h3>Kingdom of Saudi Arabia</h3>
+                    <h3>Ministry of Education</h3>
+                    <h2>University of Tabuk</h2>
+                    <h3>Faculty of Computers and Information Technology</h3>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content admin-content">
+        {% if not logged_in %}
+        <!-- Login Form -->
+        <div class="admin-login-container">
+            <div class="admin-login-box">
+                <div class="admin-login-icon">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#1a5632" stroke-width="1.5">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                </div>
+                <h1 class="admin-login-title">لوحة الإدارة</h1>
+                <p class="admin-login-subtitle">نظام إدارة طلبات الاعتذار عن المقررات</p>
+
+                {% if error %}
+                <div class="admin-error">{{ error }}</div>
+                {% endif %}
+
+                <form method="POST" action="{{ url_for('admin_login') }}">
+                    <div class="form-group">
+                        <label for="password">كلمة المرور:</label>
+                        <input type="password" id="password" name="password" required
+                               placeholder="أدخل كلمة المرور">
+                    </div>
+                    <button type="submit" class="submit-btn admin-login-btn">
+                        <span class="btn-text">دخول</span>
+                    </button>
+                </form>
+                <a href="{{ url_for('index') }}" class="admin-back-link">العودة إلى الصفحة الرئيسية</a>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- Admin Dashboard -->
+        <div class="admin-dashboard">
+            <div class="admin-header-bar">
+                <h1 class="admin-title">لوحة إدارة طلبات الاعتذار</h1>
+                <div class="admin-actions">
+                    <a href="{{ url_for('index') }}" class="admin-btn admin-btn-secondary">الصفحة الرئيسية</a>
+                    <a href="{{ url_for('admin_logout') }}" class="admin-btn admin-btn-danger">تسجيل الخروج</a>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card stat-total">
+                    <div class="stat-number">{{ stats.total }}</div>
+                    <div class="stat-label">إجمالي الطلبات</div>
+                </div>
+                <div class="stat-card stat-pending">
+                    <div class="stat-number">{{ stats.pending }}</div>
+                    <div class="stat-label">قيد الانتظار</div>
+                </div>
+                <div class="stat-card stat-approved">
+                    <div class="stat-number">{{ stats.approved }}</div>
+                    <div class="stat-label">مقبول</div>
+                </div>
+                <div class="stat-card stat-rejected">
+                    <div class="stat-number">{{ stats.rejected }}</div>
+                    <div class="stat-label">مرفوض</div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="admin-filters">
+                <form method="GET" action="{{ url_for('admin') }}" class="filter-form">
+                    <div class="filter-group">
+                        <label for="status">الحالة:</label>
+                        <select name="status" id="status">
+                            <option value="">الكل</option>
+                            <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>قيد الانتظار</option>
+                            <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>مقبول</option>
+                            <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>مرفوض</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="major">التخصص:</label>
+                        <select name="major" id="major">
+                            <option value="">الكل</option>
+                            <option value="علوم الحاسب" {% if major_filter == 'علوم الحاسب' %}selected{% endif %}>علوم الحاسب</option>
+                            <option value="تقنية المعلومات" {% if major_filter == 'تقنية المعلومات' %}selected{% endif %}>تقنية المعلومات</option>
+                            <option value="هندسة الحاسب" {% if major_filter == 'هندسة الحاسب' %}selected{% endif %}>هندسة الحاسب</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="search">بحث:</label>
+                        <input type="text" name="search" id="search" value="{{ search }}"
+                               placeholder="رقم جامعي، اسم، أو رمز مقرر">
+                    </div>
+                    <button type="submit" class="admin-btn admin-btn-primary">تصفية</button>
+                    <a href="{{ url_for('admin') }}" class="admin-btn admin-btn-secondary">إعادة تعيين</a>
+                </form>
+            </div>
+
+            <!-- Requests Table -->
+            <div class="admin-table-wrapper">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>الرقم الجامعي</th>
+                            <th>اسم الطالب</th>
+                            <th>التخصص</th>
+                            <th>رمز المقرر</th>
+                            <th>اسم المقرر</th>
+                            <th>الفصل</th>
+                            <th>العام</th>
+                            <th>السبب</th>
+                            <th>مؤهل</th>
+                            <th>الحالة</th>
+                            <th>التاريخ</th>
+                            <th>تفاصيل</th>
+                            <th>إجراء</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if requests %}
+                        {% for req in requests %}
+                        <tr>
+                            <td>{{ req.id }}</td>
+                            <td>{{ req.student.student_id }}</td>
+                            <td>{{ req.student.student_name }}</td>
+                            <td>{{ req.student.major or '-' }}</td>
+                            <td><strong>{{ req.course_code }}</strong></td>
+                            <td>{{ req.course_name }}</td>
+                            <td>{{ req.semester }}</td>
+                            <td>{{ req.year }}</td>
+                            <td>{{ req.reason_type or '-' }}</td>
+                            <td>
+                                {% if req.eligible %}
+                                <span class="badge badge-eligible">مؤهل</span>
+                                {% else %}
+                                <span class="badge badge-not-eligible">غير مؤهل</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if req.status == 'pending' %}
+                                <span class="badge badge-pending">قيد الانتظار</span>
+                                {% elif req.status == 'approved' %}
+                                <span class="badge badge-approved">مقبول</span>
+                                {% elif req.status == 'rejected' %}
+                                <span class="badge badge-rejected">مرفوض</span>
+                                {% endif %}
+                            </td>
+                            <td class="date-cell">{{ req.created_at.strftime('%Y-%m-%d %H:%M') if req.created_at else '-' }}</td>
+                            <td class="action-cell">
+                                <a href="{{ url_for('admin_request_detail', request_id=req.id) }}" class="action-btn action-view" title="عرض التفاصيل">&#128269;</a>
+                            </td>
+                            <td class="action-cell">
+                                {% if req.status == 'pending' %}
+                                <form method="POST" action="{{ url_for('admin_update_request', request_id=req.id) }}" style="display:inline;">
+                                    <input type="hidden" name="status" value="approved">
+                                    <button type="submit" class="action-btn action-approve" title="قبول">&#10003;</button>
+                                </form>
+                                <form method="POST" action="{{ url_for('admin_update_request', request_id=req.id) }}" style="display:inline;">
+                                    <input type="hidden" name="status" value="rejected">
+                                    <button type="submit" class="action-btn action-reject" title="رفض">&#10007;</button>
+                                </form>
+                                {% elif req.status == 'approved' %}
+                                <form method="POST" action="{{ url_for('admin_update_request', request_id=req.id) }}" style="display:inline;">
+                                    <input type="hidden" name="status" value="pending">
+                                    <button type="submit" class="action-btn action-reset" title="إعادة إلى قيد الانتظار">&#8634;</button>
+                                </form>
+                                {% elif req.status == 'rejected' %}
+                                <form method="POST" action="{{ url_for('admin_update_request', request_id=req.id) }}" style="display:inline;">
+                                    <input type="hidden" name="status" value="pending">
+                                    <button type="submit" class="action-btn action-reset" title="إعادة إلى قيد الانتظار">&#8634;</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td colspan="13" class="empty-table">لا توجد طلبات</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>جامعة تبوك - كلية الحاسبات وتقنية المعلومات &copy; 2025</p>
+    </footer>
+</body>
+</html>
