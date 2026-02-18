@@ -1383,6 +1383,235 @@ body {
     color: white;
 }
 
+/* ============ Step Sections ============ */
+.step-section {
+    margin-bottom: 30px;
+    padding: 25px;
+    background: #fafbfc;
+    border-radius: 12px;
+    border: 1px solid #e8edf2;
+}
+
+.step-section.completed {
+    background: #f0f7f2;
+    border-color: #a5d6a7;
+}
+
+.step-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.step-number {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1a5632, #237a45);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+.step-section.completed .step-number {
+    background: linear-gradient(135deg, #43a047, #66bb6a);
+}
+
+.step-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #1a5632;
+    margin: 0;
+    border: none;
+    padding: 0;
+}
+
+.section-note {
+    font-size: 0.9rem;
+    color: #1a5632;
+    font-weight: 600;
+    margin-bottom: 15px;
+    padding: 10px 16px;
+    background: #e8f5e9;
+    border-radius: 8px;
+    border-right: 4px solid #43a047;
+}
+
+/* ============ Student Info Card ============ */
+.student-info-card {
+    background: linear-gradient(135deg, #f5f7fa, #e8edf2);
+    border-color: #c5a028;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+.info-grid .info-item {
+    display: flex;
+    gap: 8px;
+    padding: 8px 12px;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #e8edf2;
+}
+
+.info-grid .info-label {
+    font-weight: 700;
+    color: #555;
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.info-grid .info-value {
+    font-weight: 600;
+    color: #1a5632;
+    font-size: 0.85rem;
+}
+
+/* ============ Course Selection Table ============ */
+.course-table-wrapper {
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid #e8edf2;
+}
+
+.course-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.course-table thead {
+    background: linear-gradient(135deg, #1a5632, #0d3b1f);
+    color: white;
+}
+
+.course-table th {
+    padding: 14px 16px;
+    font-weight: 600;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.course-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #f0f0f0;
+    text-align: right;
+    vertical-align: middle;
+}
+
+.course-table tbody tr {
+    transition: background 0.2s;
+    cursor: pointer;
+}
+
+.course-table tbody tr:hover {
+    background: #f0f7f2;
+}
+
+.course-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Radio button in table */
+.radio-cell {
+    text-align: center;
+    width: 50px;
+}
+
+.radio-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+}
+
+.radio-container input[type="radio"] {
+    display: none;
+}
+
+.radio-checkmark {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid #aaa;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.radio-container input:checked + .radio-checkmark {
+    border-color: #1a5632;
+    background: white;
+}
+
+.radio-container input:checked + .radio-checkmark::after {
+    content: '';
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    right: 4px;
+    bottom: 4px;
+    border-radius: 50%;
+    background: #1a5632;
+}
+
+/* Selected row highlight */
+.course-table tbody tr:has(input:checked) {
+    background: #e8f5e9;
+}
+
+.code-cell {
+    direction: ltr;
+    text-align: center;
+    font-weight: 600;
+    color: #333;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.5px;
+}
+
+.name-cell {
+    font-weight: 500;
+}
+
+.grade-cell {
+    text-align: center;
+    font-weight: 700;
+    color: #1a5632;
+}
+
+/* Current semester row */
+.current-semester-row {
+    background: #fffde7 !important;
+    border-right: 4px solid #c5a028;
+}
+
+.current-semester-row:hover {
+    background: #fff9c4 !important;
+}
+
+.badge-current {
+    display: inline-block;
+    padding: 2px 10px;
+    margin-right: 8px;
+    background: linear-gradient(135deg, #fff8e1, #ffe082);
+    color: #e65100;
+    border: 1px solid #ffca28;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
 /* ============ Responsive ============ */
 @media (max-width: 768px) {
     .header-content {
@@ -1464,6 +1693,19 @@ body {
 
     .detail-actions {
         flex-direction: column;
+    }
+
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .course-table {
+        font-size: 0.8rem;
+    }
+
+    .course-table th,
+    .course-table td {
+        padding: 10px 8px;
     }
 }
 

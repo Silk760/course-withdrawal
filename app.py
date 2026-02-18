@@ -318,6 +318,104 @@ def parse_transcript(filepath):
     return data
 
 
+def extract_courses(lines):
+    """Extract structured course list from NFKC-normalized transcript lines.
+
+    Returns list of {code, name, grade, current} dicts.
+    Course codes, grades, and names appear in separate blocks but same order.
+    Courses without grades are current semester (actively enrolled).
+    """
+    code_pat = re.compile(r'^[A-Z]{2,5}\s+\d{3,4}$')
+    grade_pat = re.compile(r'^(\+?[أبجد]|هـ|ع)$')
+
+    # Collect all course codes and grades globally (in document order)
+    codes = []
+    grades = []
+    for line in lines:
+        if code_pat.match(line):
+            codes.append(line)
+        elif grade_pat.match(line):
+            grades.append(line)
+
+    if not codes:
+        return []
+
+    # Find course names using positional structure per page-section.
+    # Each page has: codes block → grades block → names block → numbers block
+    code_indices = [i for i, l in enumerate(lines) if code_pat.match(l)]
+
+    # Group code indices into sections (pages) separated by large line gaps
+    sections = []
+    sec = [code_indices[0]]
+    for j in range(1, len(code_indices)):
+        if code_indices[j] - code_indices[j - 1] > 10:
+            sections.append(sec)
+            sec = [code_indices[j]]
+        else:
+            sec.append(code_indices[j])
+    sections.append(sec)
+
+    all_names = []
+
+    for section in sections:
+        n_codes = len(section)
+        last_code_idx = section[-1]
+
+        # Find contiguous grade block right after codes
+        grade_end = last_code_idx
+        in_grades = False
+        for k in range(last_code_idx + 1, min(last_code_idx + n_codes + 10, len(lines))):
+            if grade_pat.match(lines[k]):
+                in_grades = True
+                grade_end = k
+            elif in_grades:
+                break
+
+        # Names start right after the grade block
+        name_start = grade_end + 1
+        names = []
+        for k in range(name_start, len(lines)):
+            if len(names) >= n_codes:
+                break
+            line = lines[k]
+            if re.match(r'^\d+$', line):
+                break  # hit credit-hours block
+            if re.search(r'[\u0600-\u06FF]', line) or line.startswith('('):
+                names.append(line)
+
+        all_names.extend(names)
+
+    # Build final course list
+    courses = []
+    for i in range(len(codes)):
+        courses.append({
+            'code': codes[i],
+            'name': all_names[i] if i < len(all_names) else '',
+            'grade': grades[i] if i < len(grades) else '',
+            'current': i >= len(grades)
+        })
+
+    return courses
+
+
+def detect_current_semester(lines):
+    """Detect the current (latest) semester and year from transcript lines.
+
+    Returns (semester_type, year) e.g. ('الثاني', '1448/1447').
+    """
+    semester_pat = re.compile(r'هـ(\d{4}(?:/\d{4})?)\s+الفصل\s+(الأول|الثاني|الصيفي)')
+    last_match = None
+    for line in lines:
+        m = semester_pat.search(line)
+        if m:
+            last_match = m
+
+    if last_match:
+        return last_match.group(2), last_match.group(1)
+
+    return '', ''
+
+
 # ============ Validation Logic ============
 
 def validate_withdrawal(transcript_data, course_code, course_name, semester, year, reason):
@@ -489,18 +587,61 @@ def index():
     return render_template('index.html')
 
 
-@app.route('/validate', methods=['POST'])
-def validate():
-    # Check if transcript file was uploaded
-    if 'transcript' not in request.files:
+@app.route('/parse-transcript', methods=['POST'])
+def parse_transcript_endpoint():
+    """Accept transcript PDF, extract student data + course list."""
+    file = request.files.get('transcript')
+    if not file or file.filename == '':
         return jsonify({'error': 'لم يتم رفع السجل الأكاديمي'}), 400
-
-    file = request.files['transcript']
-    if file.filename == '':
-        return jsonify({'error': 'لم يتم اختيار ملف'}), 400
 
     if not allowed_file(file.filename):
         return jsonify({'error': 'يرجى رفع ملف بصيغة PDF فقط'}), 400
+
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    unique_filename = f"{uuid.uuid4().hex}.pdf"
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+    file.save(filepath)
+
+    try:
+        transcript_data = parse_transcript(filepath)
+
+        lines = transcript_data['raw_text'].split('\n')
+        lines = [l.strip() for l in lines if l.strip()]
+        courses = extract_courses(lines)
+        semester, year = detect_current_semester(lines)
+
+        # Store filename in session for the validate step
+        session['transcript_file'] = unique_filename
+
+        return jsonify({
+            'student': {
+                'name': transcript_data.get('student_name', ''),
+                'id': transcript_data.get('student_id', ''),
+                'college': transcript_data.get('college', '') or COLLEGE_NAME,
+                'department': transcript_data.get('department', ''),
+                'degree': transcript_data.get('degree', ''),
+                'gpa': transcript_data.get('gpa', 0),
+            },
+            'courses': courses,
+            'current_semester': semester,
+            'current_year': year,
+        })
+    except Exception as e:
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        return jsonify({'error': f'حدث خطأ أثناء تحليل السجل: {str(e)}'}), 500
+
+
+@app.route('/validate', methods=['POST'])
+def validate():
+    # Get transcript file saved during the parse step
+    transcript_filename = session.get('transcript_file')
+    if not transcript_filename:
+        return jsonify({'error': 'لم يتم رفع السجل الأكاديمي. يرجى البدء من الخطوة الأولى'}), 400
+
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], transcript_filename)
+    if not os.path.exists(filepath):
+        return jsonify({'error': 'لم يتم العثور على السجل الأكاديمي. يرجى إعادة رفعه'}), 400
 
     # Check supporting document
     if 'supporting_doc' not in request.files or request.files['supporting_doc'].filename == '':
@@ -510,46 +651,54 @@ def validate():
     if not allowed_file(supporting_file.filename):
         return jsonify({'error': 'يرجى رفع المستند الداعم بصيغة PDF فقط'}), 400
 
-    # Save files with unique names
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    unique_filename = f"{uuid.uuid4().hex}.pdf"
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-    file.save(filepath)
-
     supporting_doc_filename = f"{uuid.uuid4().hex}.pdf"
     supporting_doc_path = os.path.join(app.config['UPLOAD_FOLDER'], supporting_doc_filename)
     supporting_file.save(supporting_doc_path)
 
     try:
-        # Parse transcript
+        # Re-parse transcript
         transcript_data = parse_transcript(filepath)
 
-        # Get form data
-        course_code = request.form.get('course_code', '').strip()
-        course_name = request.form.get('course_name', '').strip()
-        semester = request.form.get('semester', '').strip()
-        year = request.form.get('year', '').strip()
+        lines = transcript_data['raw_text'].split('\n')
+        lines = [l.strip() for l in lines if l.strip()]
+        courses = extract_courses(lines)
+
+        # Find the selected course
+        selected_course_code = request.form.get('selected_course', '').strip()
+        if not selected_course_code:
+            os.remove(supporting_doc_path)
+            return jsonify({'error': 'يرجى اختيار المقرر المراد الاعتذار عنه'}), 400
+
+        selected = None
+        for c in courses:
+            if c['code'] == selected_course_code:
+                selected = c
+                break
+
+        if not selected:
+            os.remove(supporting_doc_path)
+            return jsonify({'error': 'لم يتم العثور على المقرر المحدد في السجل الأكاديمي'}), 400
+
+        course_code = selected['code']
+        course_name = selected['name']
+
+        # Get semester/year from transcript
+        semester, year = detect_current_semester(lines)
+
         reason_type = request.form.get('reason_type', '').strip()
         reason = request.form.get('reason', '').strip()
 
-        # Get selected major from form
-        selected_major = request.form.get('major', '').strip()
+        # Use department extracted from transcript as major
+        transcript_data['major'] = transcript_data.get('department', '')
 
-        # Override with form data if provided
-        if request.form.get('student_name'):
-            transcript_data['student_name'] = request.form.get('student_name')
-        if request.form.get('student_id'):
-            transcript_data['student_id'] = request.form.get('student_id')
-        if request.form.get('degree'):
-            transcript_data['degree'] = request.form.get('degree')
-
-        # Use selected major from form (major is just for identifying the student's department)
-        transcript_data['major'] = selected_major
+        # Check for previously withdrawn same course (grade = ع)
+        for c in courses:
+            if c['code'] == course_code and c['grade'] == 'ع' and c is not selected:
+                transcript_data['withdrawn_courses'].append(course_code)
 
         # Get or create student in DB
-        student_id_str = transcript_data.get('student_id', '')
-        if not student_id_str:
-            student_id_str = request.form.get('student_id', 'unknown')
+        student_id_str = transcript_data.get('student_id', '') or 'unknown'
 
         student = get_or_create_student(
             student_id_str,
@@ -561,7 +710,6 @@ def validate():
         # Check for duplicate request
         existing = check_duplicate_request(student.id, course_code, semester, year)
         if existing:
-            os.remove(filepath)
             os.remove(supporting_doc_path)
             return jsonify({
                 'error': f'تم تقديم طلب اعتذار لنفس المقرر ({course_code}) في نفس الفصل مسبقاً. رقم الطلب: {existing.id}',
@@ -586,7 +734,7 @@ def validate():
             errors=json.dumps(result['errors'], ensure_ascii=False),
             warnings=json.dumps(result['warnings'], ensure_ascii=False),
             rules_checked=json.dumps(result['rules_checked'], ensure_ascii=False),
-            transcript_file=unique_filename,
+            transcript_file=transcript_filename,
             supporting_doc=supporting_doc_filename
         )
         db.session.add(withdrawal_req)
@@ -597,9 +745,6 @@ def validate():
 
     except Exception as e:
         db.session.rollback()
-        # Clean up files on error
-        if os.path.exists(filepath):
-            os.remove(filepath)
         if os.path.exists(supporting_doc_path):
             os.remove(supporting_doc_path)
         return jsonify({'error': f'حدث خطأ أثناء معالجة الملف: {str(e)}'}), 500

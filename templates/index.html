@@ -43,173 +43,152 @@
         <div class="form-container">
             <h1 class="form-title">إقرار وتعهد - بشأن الاعتذار عن مقرر دراسي</h1>
 
-            <form id="withdrawalForm" enctype="multipart/form-data">
-                <!-- Student Info Section -->
-                <div class="section">
-                    <h2 class="section-title">بيانات الطالب</h2>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="student_name">اسم الطالب / الطالبة:</label>
-                            <input type="text" id="student_name" name="student_name" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="student_id">الرقم الجامعي:</label>
-                            <input type="text" id="student_id" name="student_id" required
-                                   pattern="\d{7,10}" title="أدخل الرقم الجامعي (7-10 أرقام)">
-                        </div>
-                        <div class="form-group">
-                            <label>الكلية:</label>
-                            <input type="text" value="كلية الحاسبات وتقنية المعلومات" readonly class="readonly-field">
-                        </div>
-                        <div class="form-group">
-                            <label for="major">التخصص:</label>
-                            <select id="major" name="major" required>
-                                <option value="">-- اختر التخصص --</option>
-                                <option value="علوم الحاسب">علوم الحاسب</option>
-                                <option value="تقنية المعلومات">تقنية المعلومات</option>
-                                <option value="هندسة الحاسب">هندسة الحاسب</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="degree">الدرجة العلمية:</label>
-                            <select id="degree" name="degree" required>
-                                <option value="">-- اختر --</option>
-                                <option value="بكالوريوس" selected>بكالوريوس</option>
-                                <option value="دبلوم متوسط">دبلوم متوسط</option>
-                                <option value="دبلوم مشارك">دبلوم مشارك</option>
-                            </select>
-                        </div>
-                    </div>
+            <!-- Step 1: Upload Transcript -->
+            <div id="step1" class="step-section">
+                <div class="step-header">
+                    <span class="step-number">1</span>
+                    <h2 class="step-title">رفع السجل الأكاديمي</h2>
                 </div>
 
-                <!-- Course Info Section -->
-                <div class="section">
-                    <h2 class="section-title">بيانات المقرر</h2>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="course_code">رمز / اسم المقرر:</label>
-                            <input type="text" id="course_code" name="course_code" required
-                                   placeholder="مثال: CS101">
-                        </div>
-                        <div class="form-group">
-                            <label for="course_name">اسم المقرر:</label>
-                            <input type="text" id="course_name" name="course_name" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="semester">الفصل الدراسي:</label>
-                            <select id="semester" name="semester" required>
-                                <option value="">-- اختر --</option>
-                                <option value="الأول">الفصل الأول</option>
-                                <option value="الثاني">الفصل الثاني</option>
-                                <option value="صيفي">الفصل الصيفي</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="year">العام الدراسي:</label>
-                            <input type="text" id="year" name="year" required
-                                   placeholder="مثال: 1447">
-                        </div>
+                <p class="upload-note">يرجى رفع السجل الأكاديمي (Transcript) بصيغة PDF لتحليل بياناتك وتعبئة النموذج تلقائياً</p>
+
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
                     </div>
+                    <p class="upload-text">اسحب السجل الأكاديمي هنا أو اضغط للاختيار</p>
+                    <p class="upload-format">PDF فقط - الحد الأقصى 16 ميجابايت</p>
+                    <input type="file" id="transcript" name="transcript" accept=".pdf,.faces">
+                </div>
+                <div class="file-info" id="fileInfo" style="display: none;">
+                    <span class="file-name" id="fileName"></span>
+                    <button type="button" class="remove-file" id="removeFile">&times;</button>
                 </div>
 
-                <!-- Reason Section -->
-                <div class="section">
-                    <h2 class="section-title">أسباب الاعتذار</h2>
-                    <div class="form-grid">
-                        <div class="form-group full-width">
-                            <label for="reason_type">سبب الاعتذار:</label>
-                            <select id="reason_type" name="reason_type" required>
-                                <option value="">-- اختر السبب --</option>
-                                <option value="صحية">أسباب صحية</option>
-                                <option value="عائلية">أسباب عائلية</option>
-                                <option value="أكاديمية">أسباب أكاديمية (صعوبة المقرر / تعارض الجدول)</option>
-                                <option value="نفسية">أسباب نفسية</option>
-                                <option value="مالية">أسباب مالية</option>
-                                <option value="وظيفية">أسباب وظيفية / التزامات عمل</option>
-                                <option value="أخرى">أخرى</option>
-                            </select>
-                        </div>
-                        <div class="form-group full-width">
-                            <label for="reason">تفاصيل إضافية (اختياري):</label>
-                            <textarea id="reason" name="reason" rows="3"
-                                      placeholder="أضف أي تفاصيل إضافية عن سبب الاعتذار..."></textarea>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Supporting Document Upload Section -->
-                <div class="section upload-section">
-                    <h2 class="section-title">رفع المستند الداعم</h2>
-                    <p class="upload-note">يرجى رفع مستند يدعم سبب الاعتذار (تقرير طبي، خطاب رسمي، إفادة، إلخ) بصيغة PDF</p>
-
-                    <div class="upload-area" id="supportingUploadArea">
-                        <div class="upload-icon">
-                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                                <line x1="16" y1="13" x2="8" y2="13"/>
-                                <line x1="16" y1="17" x2="8" y2="17"/>
-                                <polyline points="10 9 9 9 8 9"/>
-                            </svg>
-                        </div>
-                        <p class="upload-text">اسحب المستند الداعم هنا أو اضغط للاختيار</p>
-                        <p class="upload-format">PDF فقط - الحد الأقصى 16 ميجابايت</p>
-                        <input type="file" id="supporting_doc" name="supporting_doc" accept=".pdf" required>
-                    </div>
-                    <div class="file-info" id="supportingFileInfo" style="display: none;">
-                        <span class="file-name" id="supportingFileName"></span>
-                        <button type="button" class="remove-file" id="removeSupportingFile">&times;</button>
-                    </div>
-                </div>
-
-                <!-- Transcript Upload Section -->
-                <div class="section upload-section">
-                    <h2 class="section-title">رفع السجل الأكاديمي</h2>
-                    <p class="upload-note">يرجى رفع السجل الأكاديمي (Transcript) بصيغة PDF للتحقق من استيفاء شروط الاعتذار</p>
-
-                    <div class="upload-area" id="uploadArea">
-                        <div class="upload-icon">
-                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="17 8 12 3 7 8"/>
-                                <line x1="12" y1="3" x2="12" y2="15"/>
-                            </svg>
-                        </div>
-                        <p class="upload-text">اسحب الملف هنا أو اضغط للاختيار</p>
-                        <p class="upload-format">PDF فقط - الحد الأقصى 16 ميجابايت</p>
-                        <input type="file" id="transcript" name="transcript" accept=".pdf" required>
-                    </div>
-                    <div class="file-info" id="fileInfo" style="display: none;">
-                        <span class="file-name" id="fileName"></span>
-                        <button type="button" class="remove-file" id="removeFile">&times;</button>
-                    </div>
-                </div>
-
-                <!-- Acknowledgment Section -->
-                <div class="section acknowledgment">
-                    <div class="ack-box">
-                        <label class="checkbox-container">
-                            <input type="checkbox" id="acknowledge" required>
-                            <span class="checkmark"></span>
-                            <span class="ack-text">
-                                أقرّ بعلمي الكامل بجميع الآثار المترتبة على الاعتذار عن المقررات الدراسية، بما في ذلك احتمالية عدم طرح المقرر المعتذر عنه في الفصل الدراسي التالي مباشرة، وماقد يترتب على ذلك من تأخر في الخطة الدراسية وتأجيل التخرج.
-                                كما أتعهد بتحملي كامل المسؤولية عن كافة التبعات الأكاديمية الناتجة عن هذا القرار، دون أدنى مسؤولية على الجامعة أو الكلية التابع/التابعة لها.
-                            </span>
-                        </label>
-                    </div>
-                </div>
-
-                <!-- Submit Button -->
                 <div class="submit-section">
-                    <button type="submit" class="submit-btn" id="submitBtn">
-                        <span class="btn-text">التحقق وتقديم الطلب</span>
+                    <button type="button" class="submit-btn" id="parseBtn" disabled>
+                        <span class="btn-text">تحليل السجل الأكاديمي</span>
                         <span class="btn-loading" style="display: none;">
                             <span class="spinner"></span>
-                            جاري التحقق...
+                            جاري التحليل...
                         </span>
                     </button>
                 </div>
-            </form>
+            </div>
+
+            <!-- Step 2: Review & Complete (hidden initially) -->
+            <div id="step2" style="display: none;">
+                <form id="withdrawalForm" enctype="multipart/form-data">
+                    <div class="step-header">
+                        <span class="step-number">2</span>
+                        <h2 class="step-title">مراجعة البيانات وتقديم الطلب</h2>
+                    </div>
+
+                    <!-- Student Info Card (readonly) -->
+                    <div class="section student-info-card">
+                        <h2 class="section-title">بيانات الطالب</h2>
+                        <div class="info-grid" id="studentInfoGrid"></div>
+                    </div>
+
+                    <!-- Course Selection Table -->
+                    <div class="section">
+                        <h2 class="section-title">اختيار المقرر المراد الاعتذار عنه</h2>
+                        <p class="section-note" id="semesterInfo"></p>
+                        <div class="course-table-wrapper">
+                            <table class="course-table">
+                                <thead>
+                                    <tr>
+                                        <th>اختر</th>
+                                        <th>رمز المقرر</th>
+                                        <th>اسم المقرر</th>
+                                        <th>التقدير</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="courseTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Reason Section -->
+                    <div class="section">
+                        <h2 class="section-title">أسباب الاعتذار</h2>
+                        <div class="form-grid">
+                            <div class="form-group full-width">
+                                <label for="reason_type">سبب الاعتذار:</label>
+                                <select id="reason_type" name="reason_type" required>
+                                    <option value="">-- اختر السبب --</option>
+                                    <option value="صحية">أسباب صحية</option>
+                                    <option value="عائلية">أسباب عائلية</option>
+                                    <option value="أكاديمية">أسباب أكاديمية (صعوبة المقرر / تعارض الجدول)</option>
+                                    <option value="نفسية">أسباب نفسية</option>
+                                    <option value="مالية">أسباب مالية</option>
+                                    <option value="وظيفية">أسباب وظيفية / التزامات عمل</option>
+                                    <option value="أخرى">أخرى</option>
+                                </select>
+                            </div>
+                            <div class="form-group full-width">
+                                <label for="reason">تفاصيل إضافية (اختياري):</label>
+                                <textarea id="reason" name="reason" rows="3"
+                                          placeholder="أضف أي تفاصيل إضافية عن سبب الاعتذار..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Supporting Document Upload Section -->
+                    <div class="section upload-section">
+                        <h2 class="section-title">رفع المستند الداعم</h2>
+                        <p class="upload-note">يرجى رفع مستند يدعم سبب الاعتذار (تقرير طبي، خطاب رسمي، إفادة، إلخ) بصيغة PDF</p>
+
+                        <div class="upload-area" id="supportingUploadArea">
+                            <div class="upload-icon">
+                                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                    <line x1="16" y1="13" x2="8" y2="13"/>
+                                    <line x1="16" y1="17" x2="8" y2="17"/>
+                                    <polyline points="10 9 9 9 8 9"/>
+                                </svg>
+                            </div>
+                            <p class="upload-text">اسحب المستند الداعم هنا أو اضغط للاختيار</p>
+                            <p class="upload-format">PDF فقط - الحد الأقصى 16 ميجابايت</p>
+                            <input type="file" id="supporting_doc" name="supporting_doc" accept=".pdf" required>
+                        </div>
+                        <div class="file-info" id="supportingFileInfo" style="display: none;">
+                            <span class="file-name" id="supportingFileName"></span>
+                            <button type="button" class="remove-file" id="removeSupportingFile">&times;</button>
+                        </div>
+                    </div>
+
+                    <!-- Acknowledgment Section -->
+                    <div class="section acknowledgment">
+                        <div class="ack-box">
+                            <label class="checkbox-container">
+                                <input type="checkbox" id="acknowledge" required>
+                                <span class="checkmark"></span>
+                                <span class="ack-text">
+                                    أقرّ بعلمي الكامل بجميع الآثار المترتبة على الاعتذار عن المقررات الدراسية، بما في ذلك احتمالية عدم طرح المقرر المعتذر عنه في الفصل الدراسي التالي مباشرة، وماقد يترتب على ذلك من تأخر في الخطة الدراسية وتأجيل التخرج.
+                                    كما أتعهد بتحملي كامل المسؤولية عن كافة التبعات الأكاديمية الناتجة عن هذا القرار، دون أدنى مسؤولية على الجامعة أو الكلية التابع/التابعة لها.
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="submit-section">
+                        <button type="submit" class="submit-btn" id="submitBtn">
+                            <span class="btn-text">التحقق وتقديم الطلب</span>
+                            <span class="btn-loading" style="display: none;">
+                                <span class="spinner"></span>
+                                جاري التحقق...
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
 
         <!-- Results Modal -->
