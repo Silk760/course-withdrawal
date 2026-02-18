@@ -139,6 +139,15 @@ def check_duplicate_request(student_db_id, course_code, semester, year):
 
 # ============ Transcript Parsing ============
 
+def _clean_name(name):
+    """Clean PDF extraction artifacts from student names."""
+    # Fix doubled words like "بن بن" → "بن"
+    name = re.sub(r'\b(بن|ابن)\s+\1\b', r'\1', name)
+    # Collapse multiple spaces
+    name = re.sub(r'\s{2,}', ' ', name)
+    return name.strip()
+
+
 def parse_transcript(filepath):
     """Parse a University of Tabuk transcript PDF and extract relevant data."""
     doc = fitz.open(filepath)
@@ -185,12 +194,12 @@ def parse_transcript(filepath):
             if name_match:
                 name_val = name_match.group(1).strip()
                 if name_val and name_val != 'الاسم':
-                    data['student_name'] = name_val
+                    data['student_name'] = _clean_name(name_val)
             else:
                 # Format 2 (RTL): "معاذ بن عبدالمجيد...: الاسم"
                 name_match2 = re.search(r'^(.+?):\s*(?:الاسم|اسم الطالب)', line)
                 if name_match2:
-                    data['student_name'] = name_match2.group(1).strip()
+                    data['student_name'] = _clean_name(name_match2.group(1).strip())
 
         # Student ID: "451007699 : الرقم الأكاديمي" or "الرقم الجامعي : 451007699"
         if 'الرقم' in line and ('الأكاديمي' in line or 'الجامعي' in line or 'الطالب' in line or 'رقم' in line):
@@ -621,6 +630,9 @@ def parse_transcript_endpoint():
         # Store filename in session for the validate step
         session['transcript_file'] = unique_filename
 
+        # Only return current-semester courses (no grade = currently enrolled)
+        current_courses = [c for c in courses if c['current']]
+
         return jsonify({
             'student': {
                 'name': transcript_data.get('student_name', ''),
@@ -630,7 +642,7 @@ def parse_transcript_endpoint():
                 'degree': transcript_data.get('degree', ''),
                 'gpa': transcript_data.get('gpa', 0),
             },
-            'courses': courses,
+            'courses': current_courses,
             'current_semester': semester,
             'current_year': year,
         })

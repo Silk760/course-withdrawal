@@ -157,18 +157,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         data.courses.forEach(function (course) {
             var row = document.createElement('tr');
-            if (course.current) {
-                row.classList.add('current-semester-row');
-            }
-
-            var badgeHtml = course.current ? ' <span class="badge-current">مسجل حالياً</span>' : '';
-            var gradeText = course.grade || '—';
 
             row.innerHTML =
                 '<td class="radio-cell"><label class="radio-container"><input type="radio" name="selected_course" value="' + course.code + '" required><span class="radio-checkmark"></span></label></td>' +
                 '<td class="code-cell">' + course.code + '</td>' +
-                '<td class="name-cell">' + course.name + badgeHtml + '</td>' +
-                '<td class="grade-cell">' + gradeText + '</td>';
+                '<td class="name-cell">' + course.name + '</td>';
 
             tableBody.appendChild(row);
         });
