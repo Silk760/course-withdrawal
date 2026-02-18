@@ -193,7 +193,7 @@ def parse_transcript(filepath):
                     data['student_name'] = name_match2.group(1).strip()
 
         # Student ID: "451007699 : الرقم الأكاديمي" or "الرقم الجامعي : 451007699"
-        if 'الرقم الأكاديمي' in line or 'الرقم الجامعي' in line or 'رقم الطالب' in line:
+        if 'الرقم' in line and ('الأكاديمي' in line or 'الجامعي' in line or 'الطالب' in line or 'رقم' in line):
             id_match = re.search(r'(\d{7,10})', line)
             if id_match:
                 data['student_id'] = id_match.group(1)
@@ -277,6 +277,14 @@ def parse_transcript(filepath):
         fallback_pattern = re.compile(r'(?:الفصل الأول|الفصل الثاني|الفصل الصيفي)')
         fallback_semesters = fallback_pattern.findall(full_text)
         data['semesters_count'] = len(set(fallback_semesters))
+
+    # Fallback student ID: scan first 30 lines for a 9-digit number
+    if not data['student_id']:
+        for line in lines[:30]:
+            m = re.search(r'\b(\d{9})\b', line)
+            if m:
+                data['student_id'] = m.group(1)
+                break
 
     # First year check
     if data['semesters_count'] <= 2:
@@ -781,7 +789,7 @@ def view_supporting_doc(request_id):
         upload_dir,
         req.supporting_doc,
         as_attachment=False,
-        download_name=f"supporting_{req.student.student_id}_{req.course_code}.pdf"
+        download_name=f"supporting_{req.student.student_id}_{req.course_code.replace(' ', '_')}.pdf"
     )
 
 
@@ -800,7 +808,7 @@ def view_transcript(request_id):
         upload_dir,
         req.transcript_file,
         as_attachment=False,
-        download_name=f"transcript_{req.student.student_id}_{req.course_code}.pdf"
+        download_name=f"transcript_{req.student.student_id}_{req.course_code.replace(' ', '_')}.pdf"
     )
 
 
