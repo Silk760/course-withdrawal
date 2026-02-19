@@ -149,7 +149,10 @@ def _clean_name(name):
 
 
 def parse_transcript(filepath):
-    """Parse a University of Tabuk transcript PDF and extract relevant data."""
+    """Parse a University of Tabuk transcript PDF and extract relevant data.
+
+    Supports both English (column-order, value-before-label) and Arabic transcripts.
+    """
     doc = fitz.open(filepath)
     full_text = ""
     for page in doc:
@@ -182,59 +185,86 @@ def parse_transcript(filepath):
     lines = full_text.split('\n')
     lines = [l.strip() for l in lines if l.strip()]
 
-    # Track course codes and their corresponding grades for withdrawal detection
-    course_codes = []
-    grades_list = []
-
     for i, line in enumerate(lines):
-        # Student name: "الاسم : ..." or "اسم الطالب : ..." or "...name: الاسم" (RTL)
+        # ── English format: value appears on the line BEFORE its label ──
+        # "Student Id :" / "Student Name :" / "Faculty :" / "Major  :" labels
+        if re.match(r'^Student\s+Id\s*:', line) and i > 0:
+            m = re.match(r'^\d{7,10}$', lines[i - 1])
+            if m and not data['student_id']:
+                data['student_id'] = lines[i - 1]
+
+        if re.match(r'^Student\s+Name\s*:', line) and i > 0:
+            name_val = lines[i - 1]
+            # Accept alphabetic names (English or Arabic)
+            if name_val and re.match(r'^[A-Za-z\u0600-\u06FF\s]+$', name_val) and not data['student_name']:
+                data['student_name'] = name_val.strip()
+
+        if re.match(r'^Faculty\s*:', line) and i > 0:
+            fac = lines[i - 1]
+            # Must look like a faculty name, not another label
+            if fac and ':' not in fac and not data['college']:
+                data['college'] = fac.strip()
+
+        # English "Major :" — two layout variants:
+        #   variant A (page 1): value on previous line, then "Major  :"
+        #   variant B (page 2): "Major :" on one line, value on next line
+        if re.match(r'^Major\s*:', line):
+            # variant A
+            if i > 0 and not data['department']:
+                prev = lines[i - 1]
+                if prev and ':' not in prev and not re.match(r'^Major', prev) and len(prev) > 2:
+                    data['department'] = prev.strip()
+            # variant B
+            if not data['department'] and i + 1 < len(lines):
+                nxt = lines[i + 1]
+                if nxt and ':' not in nxt and not re.match(r'^Major', nxt) and len(nxt) > 2:
+                    data['department'] = nxt.strip()
+
+        # English degree: "Degree : Bachelor" on same line
+        if re.search(r'Degree\s*:\s*Bachelor', line, re.IGNORECASE):
+            data['degree'] = 'بكالوريوس'
+        elif re.search(r'Degree\s*:\s*Diploma', line, re.IGNORECASE):
+            data['degree'] = 'دبلوم'
+
+        # ── Arabic format ──
         if ('الاسم' in line and ':' in line) or 'اسم الطالب' in line:
-            # Format 1: "الاسم : نواف بن سلطان..."
             name_match = re.search(r'(?:الاسم|اسم الطالب|اسم الطالبة)\s*:\s*(.+)', line)
             if name_match:
                 name_val = name_match.group(1).strip()
-                if name_val and name_val != 'الاسم':
+                if name_val and name_val != 'الاسم' and not data['student_name']:
                     data['student_name'] = _clean_name(name_val)
             else:
-                # Format 2 (RTL): "معاذ بن عبدالمجيد...: الاسم"
                 name_match2 = re.search(r'^(.+?):\s*(?:الاسم|اسم الطالب)', line)
-                if name_match2:
+                if name_match2 and not data['student_name']:
                     data['student_name'] = _clean_name(name_match2.group(1).strip())
 
-        # Student ID: "451007699 : الرقم الأكاديمي" or "الرقم الجامعي : 451007699"
         if 'الرقم' in line and ('الأكاديمي' in line or 'الجامعي' in line or 'الطالب' in line or 'رقم' in line):
             id_match = re.search(r'(\d{7,10})', line)
-            if id_match:
+            if id_match and not data['student_id']:
                 data['student_id'] = id_match.group(1)
-            elif i + 1 < len(lines):
+            elif i + 1 < len(lines) and not data['student_id']:
                 id_match = re.search(r'(\d{7,10})', lines[i + 1])
                 if id_match:
                     data['student_id'] = id_match.group(1)
 
-        # College: "الكلية :كلية الحاسبات..."
         if 'الكلية' in line and ':' in line:
             college_match = re.search(r'الكلية\s*:\s*(.+)', line)
-            if college_match:
+            if college_match and not data['college']:
                 data['college'] = college_match.group(1).strip()
 
-        # Major/Department: "التخصص  :هندسة الحاسب1131225656 :   السجل المدني"
-        # Also standalone: "هندسة الحاسب" or "علوم الحاسب" or "تقنية المعلومات"
         if 'التخصص' in line and ':' in line:
             dept_match = re.search(r'التخصص\s*:\s*(.+)', line)
-            if dept_match:
+            if dept_match and not data['department']:
                 dept_val = dept_match.group(1).strip()
-                # Remove civil ID number and anything after it
                 dept_val = re.sub(r'\d{7,}.*', '', dept_val).strip()
                 if dept_val and dept_val != 'التخصص':
                     data['department'] = dept_val
 
-        # GPA: look for cumulative GPA values (تراكمي section)
         if 'المعدل التراكمي' in line or 'التراكمي' in line:
             gpa_match = re.search(r'(\d+\.\d+)', line)
             if gpa_match:
                 data['gpa'] = float(gpa_match.group(1))
 
-        # Degree: "البكالوريوس" or "بكالوريوس"
         if 'بكالوريوس' in line or 'البكالوريوس' in line:
             data['degree'] = 'بكالوريوس'
         elif 'دبلوم متوسط' in line:
@@ -242,19 +272,24 @@ def parse_transcript(filepath):
         elif 'دبلوم مشارك' in line:
             data['degree'] = 'دبلوم مشارك'
 
-        # Collect course codes (like "CSC 1201", "MATH 1102")
-        course_match = re.match(r'^([A-Z]{2,5}\s+\d{3,4})$', line)
-        if course_match:
-            course_codes.append(course_match.group(1).strip())
+    # ── Fallback student ID: scan first 30 lines for a 9-digit number ──
+    if not data['student_id']:
+        for line in lines[:30]:
+            m = re.search(r'\b(\d{9})\b', line)
+            if m:
+                data['student_id'] = m.group(1)
+                break
 
-    # Count withdrawals: grade "ع" appears as a standalone line
-    # The grades appear in a block after course codes, in the same order
-    # A standalone "ع" line is a withdrawal grade
+    # ── Withdrawal count ──
+    # English: standalone 'W' or 'WF' grade line
+    for line in lines:
+        if line in ('W', 'WF'):
+            data['withdrawal_count'] += 1
+    # Arabic: standalone 'ع' grade line
     for line in lines:
         if line == 'ع':
             data['withdrawal_count'] += 1
-
-    # Also check for ع in lines with course codes (older format)
+    # Arabic inline (older format): ع inside a line that has a course code
     withdrawal_pattern = re.compile(r'\bع\b')
     for line in lines:
         if withdrawal_pattern.search(line) and line != 'ع':
@@ -262,7 +297,7 @@ def parse_transcript(filepath):
                 data['withdrawal_count'] += 1
                 data['withdrawn_courses'].append(line.strip())
 
-    # Extract credits info
+    # ── Credits info (Arabic format) ──
     for line in lines:
         credits_match = re.search(r'(?:مجموع الساعات|إجمالي الساعات|ساعات الخطة)[:\s]*(\d+)', line)
         if credits_match:
@@ -276,49 +311,62 @@ def parse_transcript(filepath):
         if remaining_match:
             data['remaining_credits'] = int(remaining_match.group(1))
 
-    # Count semesters: "هـ1445 الفصل الأول", "هـ1446 الفصل الثاني", etc.
-    semester_pattern = re.compile(r'هـ\d{4}(?:/\d{4})?\s+الفصل\s+(?:الأول|الثاني|الصيفي)')
-    semesters = set(semester_pattern.findall(full_text))
-    data['semesters_count'] = len(semesters) if semesters else 0
+    # ── Credits completed (English: last AHRS value before AHRS label) ──
+    if data['total_credits_completed'] == 0:
+        ahrs_indices = [i for i, l in enumerate(lines) if l == 'AHRS']
+        if ahrs_indices:
+            # Values appear before labels; collect decimals just before first AHRS label
+            first_ahrs = ahrs_indices[0]
+            candidates = []
+            for j in range(max(0, first_ahrs - 20), first_ahrs):
+                m = re.match(r'^(\d{1,3}\.\d{2})$', lines[j])
+                if m:
+                    val = float(m.group(1))
+                    if 5 < val < 300:
+                        candidates.append(val)
+            if candidates:
+                data['total_credits_completed'] = int(candidates[-1])
 
-    # Fallback: also count generic semester mentions
+    # ── Semester count ──
+    # English: "First Semester 2023/2024", "Second Semester 2023/2024", etc.
+    en_sem_pat = re.compile(r'(?:First|Second|Summer)\s+Semester\s+\d{4}/\d{4}', re.IGNORECASE)
+    en_semesters = set(m.group(0).lower() for m in en_sem_pat.finditer(full_text))
+
+    # Arabic: "هـ1445 الفصل الأول"
+    ar_sem_pat = re.compile(r'هـ\d{4}(?:/\d{4})?\s+الفصل\s+(?:الأول|الثاني|الصيفي)')
+    ar_semesters = set(ar_sem_pat.findall(full_text))
+
+    all_semesters = en_semesters | ar_semesters
+    data['semesters_count'] = len(all_semesters)
+
+    # Fallback: count generic Arabic semester terms
     if data['semesters_count'] == 0:
         fallback_pattern = re.compile(r'(?:الفصل الأول|الفصل الثاني|الفصل الصيفي)')
-        fallback_semesters = fallback_pattern.findall(full_text)
-        data['semesters_count'] = len(set(fallback_semesters))
+        data['semesters_count'] = len(set(fallback_pattern.findall(full_text)))
 
-    # Fallback student ID: scan first 30 lines for a 9-digit number
-    if not data['student_id']:
-        for line in lines[:30]:
-            m = re.search(r'\b(\d{9})\b', line)
-            if m:
-                data['student_id'] = m.group(1)
-                break
-
-    # First year check
+    # ── First year check ──
     if data['semesters_count'] <= 2:
         data['is_first_year'] = True
     if data['student_id'] and len(data['student_id']) >= 3:
         try:
             admission_year = int(data['student_id'][:2])
-            current_year = 47  # 1447
+            current_year = 47  # 1447 Hijri
             if current_year - admission_year <= 1:
                 data['is_first_year'] = True
         except ValueError:
             pass
 
-    # Expected graduate check
+    # ── Expected graduate check ──
     if data['remaining_credits'] > 0 and data['remaining_credits'] <= 18:
         data['expected_graduate'] = True
 
-    # Extract cumulative GPA (last تراكمي GPA value)
-    # The GPA values appear as standalone decimal numbers near تراكمي labels
+    # ── GPA extraction ──
+    # Arabic fallback: standalone decimals after تراكمي label
     if data['gpa'] == 0.0:
-        # Find all GPA-like values (X.XX format between 0 and 5)
         gpa_candidates = []
         in_cumulative = False
         for line in lines:
-            if 'تراكمي' in line:
+            if 'تراكمي' in line or line == 'Cumulative':
                 in_cumulative = True
             if in_cumulative:
                 gpa_match = re.match(r'^(\d+\.\d{2})$', line)
@@ -327,7 +375,21 @@ def parse_transcript(filepath):
                     if 0 < val <= 5.0:
                         gpa_candidates.append(val)
         if gpa_candidates:
-            data['gpa'] = gpa_candidates[-1]  # Last cumulative GPA
+            data['gpa'] = gpa_candidates[-1]
+
+    # English fallback: all standalone X.XX decimals between 0.5 and 5.0
+    # (marks are > 5, credit counts are integers or > 5 as floats)
+    if data['gpa'] == 0.0:
+        gpa_candidates = []
+        for line in lines:
+            m = re.match(r'^(\d\.\d{2})$', line)
+            if m:
+                val = float(m.group(1))
+                if 0.5 <= val <= 5.0:
+                    gpa_candidates.append(val)
+        non_zero = [v for v in gpa_candidates if v > 0]
+        if non_zero:
+            data['gpa'] = non_zero[-1]
 
     if not data['degree']:
         data['degree'] = 'بكالوريوس'
@@ -341,9 +403,12 @@ def extract_courses(lines):
     Returns list of {code, name, grade, current} dicts.
     Course codes, grades, and names appear in separate blocks but same order.
     Courses without grades are current semester (actively enrolled).
+    Supports both English grades (A+, B, C, W…) and Arabic grades (أ, ب, ع…).
     """
     code_pat = re.compile(r'^[A-Z]{2,5}\s+\d{3,4}$')
-    grade_pat = re.compile(r'^(\+?[أبجد]|هـ|ع)$')
+    # English grades: A+ A B+ B C+ C D E W WF IP
+    # Arabic grades:  أ ب ج د هـ ع  (with optional leading +)
+    grade_pat = re.compile(r'^([A-E][+-]?|W[F]?|IP|\+?[أبجد]|هـ|ع)$')
 
     # Collect all course codes and grades globally (in document order)
     codes = []
@@ -397,7 +462,11 @@ def extract_courses(lines):
             line = lines[k]
             if re.match(r'^\d+$', line):
                 break  # hit credit-hours block
+            # Accept Arabic course names, English course names (> 3 chars, starts with letter),
+            # or parenthesised annotations
             if re.search(r'[\u0600-\u06FF]', line) or line.startswith('('):
+                names.append(line)
+            elif re.match(r'^[A-Za-z]', line) and len(line) > 3:
                 names.append(line)
 
         all_names.extend(names)
@@ -418,17 +487,32 @@ def extract_courses(lines):
 def detect_current_semester(lines):
     """Detect the current (latest) semester and year from transcript lines.
 
-    Returns (semester_type, year) e.g. ('الثاني', '1448/1447').
+    Returns (semester_type_arabic, year_string) e.g. ('الثاني', '2025/2026').
+    Supports both English ("Second Semester 2025/2026") and Arabic ("هـ1447 الفصل الثاني").
     """
-    semester_pat = re.compile(r'هـ(\d{4}(?:/\d{4})?)\s+الفصل\s+(الأول|الثاني|الصيفي)')
-    last_match = None
-    for line in lines:
-        m = semester_pat.search(line)
-        if m:
-            last_match = m
+    # Arabic format
+    ar_pat = re.compile(r'هـ(\d{4}(?:/\d{4})?)\s+الفصل\s+(الأول|الثاني|الصيفي)')
+    # English format
+    en_pat = re.compile(r'(First|Second|Summer)\s+Semester\s+(\d{4}/\d{4})', re.IGNORECASE)
 
-    if last_match:
-        return last_match.group(2), last_match.group(1)
+    last_ar = None
+    last_en = None
+    for line in lines:
+        m = ar_pat.search(line)
+        if m:
+            last_ar = m
+        m = en_pat.search(line)
+        if m:
+            last_en = m
+
+    if last_en:
+        sem_en = last_en.group(1).lower()
+        ar_map = {'first': 'الأول', 'second': 'الثاني', 'summer': 'الصيفي'}
+        sem_ar = ar_map.get(sem_en, sem_en)
+        return sem_ar, last_en.group(2)
+
+    if last_ar:
+        return last_ar.group(2), last_ar.group(1)
 
     return '', ''
 
@@ -604,6 +688,7 @@ def index():
     return render_template('index.html')
 
 
+
 @app.route('/parse-transcript', methods=['POST'])
 def parse_transcript_endpoint():
     """Accept transcript PDF, extract student data + course list."""
@@ -712,9 +797,9 @@ def validate():
         # Use department extracted from transcript as major
         transcript_data['major'] = transcript_data.get('department', '')
 
-        # Check for previously withdrawn same course (grade = ع)
+        # Check for previously withdrawn same course (grade = ع Arabic or W English)
         for c in courses:
-            if c['code'] == course_code and c['grade'] == 'ع' and c is not selected:
+            if c['code'] == course_code and c['grade'] in ('ع', 'W', 'WF') and c is not selected:
                 transcript_data['withdrawn_courses'].append(course_code)
 
         # Get or create student in DB
